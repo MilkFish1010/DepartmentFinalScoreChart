@@ -4,7 +4,13 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
+        {
+            "type": "java",
+            "name": "Student",
+            "request": "launch",
+            "mainClass": "DepartmentFinalScoreChart.Student",
+            "projectName": "DepartmentFinalScoreChart_79babffd"
+        },
         {
             "type": "java",
             "name": "Current File",
@@ -21,7 +27,7 @@
             "classPaths": [
                 "${workspaceFolder}/bin",
                 "${workspaceFolder}/lib/*"
-    ]
+            ]
         },
         {
             "type": "java",
@@ -33,7 +39,7 @@
             "classPaths": [
                 "${workspaceFolder}/bin",
                 "${workspaceFolder}/lib/*"
-    ]
+            ]
         }
     ]
 }

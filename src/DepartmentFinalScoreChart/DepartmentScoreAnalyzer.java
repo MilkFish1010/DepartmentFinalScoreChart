@@ -50,9 +50,9 @@ public class DepartmentScoreAnalyzer extends Application {
     private List<Student> students = new ArrayList<>();
     private Map<String, Double> departmentAverages;
     private VBox legendBox; // Custom legend container
-    private BorderPane root; // main layout pane
-    private BarChart chart;   // currently displayed chart
-    private boolean isVerticalChart = true; // toggle flag
+    private BorderPane appPane; // Main app layout pane
+    private BarChart chart;   // Currently displayed chart
+    private boolean isVerticalChart = true; // Toggle flag
 
     // Define department colors
     private static final String CS_COLOR = "#00008B"; // Dark Blue
@@ -60,130 +60,220 @@ public class DepartmentScoreAnalyzer extends Application {
     private static final String ENGINEERING_COLOR = "#008000"; // Green
     private static final String BUSINESS_COLOR = "#FFD700"; // Yellow/Gold
 
+    // Panes for switching between home screen and app screen
+    private StackPane rootPane;
+    private VBox homePane;
+
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Department Average Final Score Comparison");
 
-        // Create main layout
-        root = new BorderPane();
+        // Create the root StackPane
+        rootPane = new StackPane();
+        // Create the homescreen and the app screen
+        createHomePane();
+        createAppPane(primaryStage);
 
-        // Create custom legend container on the right
-        legendBox = new VBox(10);
-        legendBox.setPadding(new Insets(15));
-        legendBox.setStyle("-fx-border-color: gray; -fx-border-width: 1;");
+        // Initially, show the home screen.
+        rootPane.getChildren().addAll(appPane, homePane);
+        appPane.setVisible(false);
+        homePane.setVisible(true);
 
-        // Create control buttons
-        Button loadButton = new Button("Load CSV File");
-        loadButton.setFont(Font.font("Arial", 12));
-        loadButton.setPrefWidth(120);
-        loadButton.setPrefHeight(30);
-
-        // Existing export buttons (CSV, PNG, PDF)...
-        Button exportCSVButton = new Button("Export CSV");
-        exportCSVButton.setFont(Font.font("Arial", 12));
-        exportCSVButton.setPrefWidth(120);
-        exportCSVButton.setPrefHeight(30);
-        exportCSVButton.setDisable(true);
-
-        Button exportPNGButton = new Button("Export PNG");
-        exportPNGButton.setFont(Font.font("Arial", 12));
-        exportPNGButton.setPrefWidth(120);
-        exportPNGButton.setPrefHeight(30);
-        exportPNGButton.setDisable(true);
-
-        Button exportPDFButton = new Button("Export PDF");
-        exportPDFButton.setFont(Font.font("Arial", 12));
-        exportPDFButton.setPrefWidth(120);
-        exportPDFButton.setPrefHeight(30);
-        exportPDFButton.setDisable(true);
-
-        // New toggle button for orientation
-        Button toggleOrientationButton = new Button("Toggle Orientation");
-        toggleOrientationButton.setFont(Font.font("Arial", 12));
-        toggleOrientationButton.setPrefWidth(150);
-        toggleOrientationButton.setPrefHeight(30);
-        toggleOrientationButton.setDisable(true);
-
-        Label summaryLabel = new Label("Load a CSV file to see results");
-        summaryLabel.setFont(Font.font("Arial", 14));
-
-        // Set up button actions
-        loadButton.setOnAction(e -> {
-            FileChooser fileChooser = new FileChooser();
-            fileChooser.setTitle("Open Student Data CSV File");
-            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
-            File selectedFile = fileChooser.showOpenDialog(primaryStage);
-            if (selectedFile != null) {
-                try {
-                    loadData(selectedFile.getAbsolutePath());
-                    departmentAverages = calculateDepartmentAverages();
-                    // Build the initial vertical chart
-                    chart = createChart(isVerticalChart, departmentAverages);
-                    root.setCenter(chart);
-                    updateSummary(summaryLabel, departmentAverages);
-                    updateLegend(departmentAverages);
-                    exportCSVButton.setDisable(false);
-                    exportPNGButton.setDisable(false);
-                    exportPDFButton.setDisable(false);
-                    toggleOrientationButton.setDisable(false);
-                } catch (Exception ex) {
-                    showAlert("Error", "Failed to load or process data: " + ex.getMessage());
-                }
-            }
-        });
-
-        exportCSVButton.setOnAction(e -> {
-            if (departmentAverages != null && !departmentAverages.isEmpty()) {
-                FileChooser fileChooser = new FileChooser();
-                fileChooser.setTitle("Save CSV Results");
-                fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
-                File file = fileChooser.showSaveDialog(primaryStage);
-                if (file != null) {
-                    exportData(file, departmentAverages);
-                }
-            } else {
-                showAlert("Error", "No data to export");
-            }
-        });
-
-        exportPNGButton.setOnAction(e -> exportChartAsPNG(primaryStage));
-        exportPDFButton.setOnAction(e -> exportChartAsPDF(primaryStage));
-
-        toggleOrientationButton.setOnAction(e -> {
-            // Toggle the orientation flag
-            isVerticalChart = !isVerticalChart;
-            // Rebuild the chart with the same data in the new orientation
-            chart = createChart(isVerticalChart, departmentAverages);
-            root.setCenter(chart);
-        });
-
-        // Layout for buttons and summary at the bottom
-        HBox buttonBox = new HBox(20, loadButton, exportCSVButton, exportPNGButton, exportPDFButton, toggleOrientationButton);
-        buttonBox.setPadding(new Insets(15));
-
-        VBox bottomBox = new VBox(15, buttonBox, summaryLabel);
-        bottomBox.setPadding(new Insets(15));
-
-        root.setBottom(bottomBox);
-        root.setRight(legendBox);
-
-        Scene scene = new Scene(root, 1000, 700);
+        Scene scene = new Scene(rootPane, 1000, 700);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
-    // This method creates and returns a BarChart based on the orientation flag.
-    // For vertical (isVertical true), x-axis is CategoryAxis and y-axis is NumberAxis.
-    // For horizontal, the axes are swapped.
+    // Creates the homescreen pane.
+    private void createHomePane() {
+        homePane = new VBox(20);
+        homePane.setAlignment(Pos.CENTER);
+        homePane.setPadding(new Insets(20));
+        homePane.setStyle("-fx-background-color: linear-gradient(from 0% 0% to 100% 100%, #ffd89b, #ff9d8e); " +
+                          "-fx-font-family: 'Comic Neue', cursive;");
+
+        Label title = new Label("Average Final Score Reaper");
+        title.setFont(Font.font("Comic Neue", FontWeight.BOLD, 40));
+        title.setTextFill(Color.web("#4a2c2a"));
+
+        Label author = new Label("Author: Hoby Ace Jerico Josol");
+        author.setFont(Font.font("Comic Neue", 20));
+        author.setTextFill(Color.web("#4a2c2a"));
+
+        Label description = new Label("Gathers average final score of students per department.");
+        description.setFont(Font.font("Comic Neue", 16));
+        description.setTextFill(Color.web("#4a2c2a"));
+
+        Button startButton = new Button("🚀 Start");
+        startButton.setFont(Font.font("Comic Neue", 14));
+        startButton.setPrefWidth(200);
+        startButton.setPrefHeight(40);
+        startButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
+                             "-fx-background-radius: 30;");
+        startButton.setOnAction(e -> {
+            // Switch to appPane (main UI)
+            homePane.setVisible(false);
+            appPane.setVisible(true);
+        });
+
+        homePane.getChildren().addAll(title, author, description, startButton);
+    }
+
+    // Creates the main app pane (appPane) containing the chart, controls, and legend.
+    private void createAppPane(Stage primaryStage) {
+        appPane = new BorderPane();
+        appPane.setStyle("-fx-background-color: linear-gradient(from 0% 0% to 100% 100%, #ffd89b, #ff9d8e); " +
+                         "-fx-font-family: 'Comic Neue', cursive;");
+
+        // Legend on the right
+        legendBox = new VBox(10);
+        legendBox.setPadding(new Insets(15));
+        legendBox.setStyle("-fx-border-color: gray; -fx-border-width: 1; " +
+                           "-fx-background-color: rgba(255,255,255,0.9);");
+        appPane.setRight(legendBox);
+
+        // Create control buttons with increased widths and emojis added
+        Button loadButton = new Button("📂 Load CSV File");
+        loadButton.setFont(Font.font("Comic Neue", 12));
+        loadButton.setPrefWidth(200);
+        loadButton.setPrefHeight(40);
+        loadButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
+                            "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
+
+        Button exportCSVButton = new Button("💾 Export CSV");
+        exportCSVButton.setFont(Font.font("Comic Neue", 12));
+        exportCSVButton.setPrefWidth(200);
+        exportCSVButton.setPrefHeight(40);
+        exportCSVButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
+                                 "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
+        exportCSVButton.setDisable(true);
+
+        Button exportPNGButton = new Button("🖼️ Export PNG");
+        exportPNGButton.setFont(Font.font("Comic Neue", 12));
+        exportPNGButton.setPrefWidth(200);
+        exportPNGButton.setPrefHeight(40);
+        exportPNGButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
+                                 "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
+        exportPNGButton.setDisable(true);
+
+        Button exportPDFButton = new Button("📄 Export PDF");
+        exportPDFButton.setFont(Font.font("Comic Neue", 12));
+        exportPDFButton.setPrefWidth(200);
+        exportPDFButton.setPrefHeight(40);
+        exportPDFButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
+                                 "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
+        exportPDFButton.setDisable(true);
+
+        Button resetButton = new Button("🔄 Reset");
+        resetButton.setFont(Font.font("Comic Neue", 12));
+        resetButton.setPrefWidth(200);
+        resetButton.setPrefHeight(40);
+        resetButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
+                             "-fx-background-radius: 30;");
+        resetButton.setOnAction(e -> {
+            // Reset: clear data and switch back to home screen
+            students.clear();
+            departmentAverages = null;
+            chart = null;
+            legendBox.getChildren().clear();
+            appPane.setCenter(null);
+            // Disable export and toggle buttons
+            exportCSVButton.setDisable(true);
+            exportPNGButton.setDisable(true);
+            exportPDFButton.setDisable(true);
+            // Show homescreen
+            appPane.setVisible(false);
+            homePane.setVisible(true);
+        });
+
+        Button toggleOrientationButton = new Button("↕️ Toggle Orientation");
+        toggleOrientationButton.setFont(Font.font("Comic Neue", 12));
+        toggleOrientationButton.setPrefWidth(200);
+        toggleOrientationButton.setPrefHeight(40);
+        toggleOrientationButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
+                                         "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
+        toggleOrientationButton.setDisable(true);
+        toggleOrientationButton.setOnAction(e -> {
+            isVerticalChart = !isVerticalChart;
+            chart = createChart(isVerticalChart, departmentAverages);
+            appPane.setCenter(chart);
+        });
+
+        final Label summaryLabel = new Label("Load a CSV file to see results");
+        summaryLabel.setFont(Font.font("Comic Neue", 14));
+        summaryLabel.setStyle("-fx-text-fill: #4a2c2a;");
+
+        // Layout for bottom controls (Load button at top, export buttons and summary below, then reset)
+        VBox bottomBox = new VBox(15);
+        bottomBox.setPadding(new Insets(15));
+        bottomBox.setAlignment(Pos.CENTER);
+        bottomBox.getChildren().add(loadButton);
+        HBox exportButtonBox = new HBox(20, exportCSVButton, exportPNGButton, exportPDFButton);
+        exportButtonBox.setAlignment(Pos.CENTER);
+        bottomBox.getChildren().addAll(exportButtonBox, summaryLabel, resetButton);
+        appPane.setBottom(bottomBox);
+
+        // Place the toggle orientation button in a left VBox, center-aligned vertically
+        VBox leftBox = new VBox(toggleOrientationButton);
+        leftBox.setPadding(new Insets(15));
+        leftBox.setAlignment(Pos.CENTER);
+        appPane.setLeft(leftBox);
+
+        // --- New: Load CSV File event handler ---
+        loadButton.setOnAction(e -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Open CSV File");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+            File file = fileChooser.showOpenDialog(primaryStage);
+            if (file != null) {
+                try {
+                    loadData(file.getAbsolutePath());
+                    departmentAverages = calculateDepartmentAverages();
+                    chart = createChart(isVerticalChart, departmentAverages);
+                    appPane.setCenter(chart);
+                    updateLegend(departmentAverages);
+                    updateSummary(summaryLabel, departmentAverages);
+                    exportCSVButton.setDisable(false);
+                    exportPNGButton.setDisable(false);
+                    exportPDFButton.setDisable(false);
+                    toggleOrientationButton.setDisable(false);
+                } catch (IOException ex) {
+                    showAlert("Error", "Error loading CSV file: " + ex.getMessage());
+                }
+            }
+        });
+
+        // --- Export CSV event handler ---
+        exportCSVButton.setOnAction(e -> {
+            FileChooser fileChooser = new FileChooser();
+            fileChooser.setTitle("Save CSV File");
+            fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV Files", "*.csv"));
+            File file = fileChooser.showSaveDialog(primaryStage);
+            if (file != null) {
+                exportData(file, departmentAverages);
+            }
+        });
+
+        // --- Export PNG event handler ---
+        exportPNGButton.setOnAction(e -> {
+            exportChartAsPNG(primaryStage);
+        });
+
+        // --- Export PDF event handler ---
+        exportPDFButton.setOnAction(e -> {
+            exportChartAsPDF(primaryStage);
+        });
+    }
+
+    // Creates and returns a BarChart based on the orientation flag.
     private BarChart createChart(boolean isVertical, Map<String, Double> averages) {
         BarChart chart;
         double fixedBarWidth = 80;
-        double fixedBarHeight = 80; // for horizontal chart, each bar's height
+        double fixedBarHeight = 80;
         double categoryGap = 50;
         int count = averages.size();
-    
+
         if (isVertical) {
-            // For vertical (column) chart, we compute width based on number of categories.
             double computedWidth = count * fixedBarWidth + (count + 1) * categoryGap;
             CategoryAxis xAxis = new CategoryAxis();
             NumberAxis yAxis = new NumberAxis();
@@ -195,19 +285,18 @@ public class DepartmentScoreAnalyzer extends Application {
                 series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
             }
             chart.getData().add(series);
-            // Update bar colors and add centered labels
             Platform.runLater(() -> {
                 for (XYChart.Data<String, Number> data : series.getData()) {
                     String color = getDepartmentColor(data.getXValue());
                     if (data.getNode() != null) {
                         data.getNode().setStyle("-fx-bar-fill: " + color + ";");
-                        if (data.getNode() instanceof StackPane) {
-                            StackPane stackPane = (StackPane) data.getNode();
+                        if (data.getNode() instanceof javafx.scene.layout.StackPane) {
+                            javafx.scene.layout.StackPane stackPane = (javafx.scene.layout.StackPane) data.getNode();
                             Label label = new Label(String.format("%.2f", data.getYValue()));
-                            label.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+                            label.setFont(Font.font("Comic Neue", FontWeight.BOLD, 12));
                             label.setTextFill(Color.WHITE);
                             stackPane.getChildren().add(label);
-                            StackPane.setAlignment(label, Pos.CENTER);
+                            javafx.scene.layout.StackPane.setAlignment(label, Pos.CENTER);
                         }
                     }
                 }
@@ -216,7 +305,6 @@ public class DepartmentScoreAnalyzer extends Application {
             chart.setPrefWidth(computedWidth);
             chart.setMaxWidth(computedWidth);
         } else {
-            // For horizontal chart, categories are on the vertical axis.
             double computedHeight = count * fixedBarHeight + (count + 1) * categoryGap;
             NumberAxis xAxis = new NumberAxis();
             CategoryAxis yAxis = new CategoryAxis();
@@ -228,19 +316,18 @@ public class DepartmentScoreAnalyzer extends Application {
                 series.getData().add(new XYChart.Data<>(entry.getValue(), entry.getKey()));
             }
             chart.getData().add(series);
-            // Update bar colors and add centered labels
             Platform.runLater(() -> {
                 for (XYChart.Data<Number, String> data : series.getData()) {
                     String color = getDepartmentColor(data.getYValue());
                     if (data.getNode() != null) {
                         data.getNode().setStyle("-fx-bar-fill: " + color + ";");
-                        if (data.getNode() instanceof StackPane) {
-                            StackPane stackPane = (StackPane) data.getNode();
+                        if (data.getNode() instanceof javafx.scene.layout.StackPane) {
+                            javafx.scene.layout.StackPane stackPane = (javafx.scene.layout.StackPane) data.getNode();
                             Label label = new Label(String.format("%.2f", data.getXValue()));
-                            label.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+                            label.setFont(Font.font("Comic Neue", FontWeight.BOLD, 12));
                             label.setTextFill(Color.WHITE);
                             stackPane.getChildren().add(label);
-                            StackPane.setAlignment(label, Pos.CENTER);
+                            javafx.scene.layout.StackPane.setAlignment(label, Pos.CENTER);
                         }
                     }
                 }
@@ -249,13 +336,12 @@ public class DepartmentScoreAnalyzer extends Application {
             chart.setPrefHeight(computedHeight);
             chart.setMaxHeight(computedHeight);
         }
-    
+
         chart.setTitle("Average Final Scores by Department");
         chart.setAnimated(false);
         chart.setLegendVisible(false); // Custom legend is used
         chart.setCategoryGap(categoryGap);
         chart.setBarGap(0);
-        // Set margin for the chart
         BorderPane.setMargin(chart, new Insets(20));
         return chart;
     }
@@ -344,7 +430,7 @@ public class DepartmentScoreAnalyzer extends Application {
     private void updateLegend(Map<String, Double> departmentAverages) {
         legendBox.getChildren().clear();
         Label legendTitle = new Label("Legend");
-        legendTitle.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        legendTitle.setFont(Font.font("Comic Neue", FontWeight.BOLD, 14));
         legendBox.getChildren().add(legendTitle);
         for (String department : departmentAverages.keySet()) {
             HBox legendItem = new HBox(10);
@@ -352,7 +438,7 @@ public class DepartmentScoreAnalyzer extends Application {
             colorBox.setPrefSize(15, 15);
             colorBox.setStyle("-fx-background-color: " + getDepartmentColor(department) + "; -fx-border-color: black;");
             Label deptLabel = new Label(department);
-            deptLabel.setFont(Font.font("Arial", 12));
+            deptLabel.setFont(Font.font("Comic Neue", 12));
             legendItem.getChildren().addAll(colorBox, deptLabel);
             legendBox.getChildren().add(legendItem);
         }
@@ -393,7 +479,7 @@ public class DepartmentScoreAnalyzer extends Application {
         }
     }
 
-    // Export the chart as a PNG image
+    // Export chart as PNG image
     private void exportChartAsPNG(Stage primaryStage) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save Chart as PNG");
@@ -411,7 +497,7 @@ public class DepartmentScoreAnalyzer extends Application {
         }
     }
 
-    // Export the chart as a PDF document
+    // Export chart as PDF document
     private void exportChartAsPDF(Stage primaryStage) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save Chart as PDF");

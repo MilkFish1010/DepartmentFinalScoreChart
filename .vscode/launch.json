@@ -17,7 +17,11 @@
             "request": "launch",
             "mainClass": "DepartmentFinalScoreChart.DepartmentScoreAnalyzer",
             "projectName": "DepartmentFinalScoreChart_79babffd",
-            "vmArgs": "--module-path C:/Users/admin/Desktop/javafx-sdk-24/lib --add-modules javafx.controls,javafx.fxml"
+            "vmArgs": "--module-path C:/Users/admin/Desktop/javafx-sdk-24/lib --add-modules javafx.controls,javafx.fxml,javafx.swing",
+            "classPaths": [
+                "${workspaceFolder}/bin",
+                "${workspaceFolder}/lib/*"
+    ]
         },
         {
             "type": "java",
@@ -25,7 +29,11 @@
             "request": "launch",
             "mainClass": "DepartmentFinalScoreChart.Main",
             "projectName": "DepartmentFinalScoreChart_79babffd",
-            "vmArgs": "--module-path C:/Users/admin/Desktop/javafx-sdk-24/lib --add-modules javafx.controls,javafx.fxml"
+            "vmArgs": "--module-path C:/Users/admin/Desktop/javafx-sdk-24/lib --add-modules javafx.controls,javafx.fxml,javafx.swing",
+            "classPaths": [
+                "${workspaceFolder}/bin",
+                "${workspaceFolder}/lib/*"
+    ]
         }
     ]
 }

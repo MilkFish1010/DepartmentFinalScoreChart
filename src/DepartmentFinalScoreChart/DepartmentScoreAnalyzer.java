@@ -1,5 +1,7 @@
 package DepartmentFinalScoreChart;
 
+import javafx.animation.FadeTransition;
+import javafx.animation.ScaleTransition;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.embed.swing.SwingFXUtils;
@@ -25,6 +27,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
@@ -47,12 +50,13 @@ import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 
 public class DepartmentScoreAnalyzer extends Application {
 
+    // Data structures for student records and computed averages
     private List<Student> students = new ArrayList<>();
     private Map<String, Double> departmentAverages;
     private VBox legendBox; // Custom legend container
     private BorderPane appPane; // Main app layout pane
     private BarChart chart;   // Currently displayed chart
-    private boolean isVerticalChart = true; // Toggle flag
+    private boolean isVerticalChart = true; // Toggle flag for chart orientation
 
     // Define department colors
     private static final String CS_COLOR = "#ADD8E6"; // Dark Blue
@@ -68,13 +72,12 @@ public class DepartmentScoreAnalyzer extends Application {
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Department Average Final Score Comparison");
 
-        // Create the root StackPane
+        // Create the root StackPane and initialize home and app panes
         rootPane = new StackPane();
-        // Create the homescreen and the app screen
         createHomePane();
         createAppPane(primaryStage);
 
-        // Initially, show the home screen.
+        // Show home screen initially
         rootPane.getChildren().addAll(appPane, homePane);
         appPane.setVisible(false);
         homePane.setVisible(true);
@@ -84,7 +87,7 @@ public class DepartmentScoreAnalyzer extends Application {
         primaryStage.show();
     }
 
-    // Creates the homescreen pane.
+    // Creates the home screen pane with a title, author info, and a start button.
     private void createHomePane() {
         homePane = new VBox(20);
         homePane.setAlignment(Pos.CENTER);
@@ -109,61 +112,60 @@ public class DepartmentScoreAnalyzer extends Application {
         startButton.setPrefWidth(200);
         startButton.setPrefHeight(40);
         startButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; -fx-background-radius: 30;");
+        
+        // Scale animation for visual feedback
         startButton.setOnAction(e -> {
-            // Switch to appPane (main UI)
-            homePane.setVisible(false);
-            appPane.setVisible(true);
+            ScaleTransition scale = new ScaleTransition(Duration.millis(150), startButton);
+            scale.setFromX(1.0);
+            scale.setFromY(1.0);
+            scale.setToX(1.1);
+            scale.setToY(1.1);
+            scale.setAutoReverse(true);
+            scale.setCycleCount(2);
+            scale.play();
+
+            // Transition from homePane to appPane using fade effects
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(500), homePane);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+            fadeOut.setOnFinished(ev -> {
+                homePane.setVisible(false);
+                appPane.setOpacity(0.0);
+                appPane.setVisible(true);
+                FadeTransition fadeIn = new FadeTransition(Duration.millis(500), appPane);
+                fadeIn.setFromValue(0.0);
+                fadeIn.setToValue(1.0);
+                fadeIn.play();
+            });
+            fadeOut.play();
         });
 
         homePane.getChildren().addAll(title, author, description, startButton);
     }
 
-    // Creates the main app pane (appPane) containing the chart, controls, and legend.
+    // Creates the main application pane containing controls, the chart, and the legend.
     private void createAppPane(Stage primaryStage) {
         appPane = new BorderPane();
         appPane.setStyle("-fx-background-color: linear-gradient(from 0% 0% to 100% 100%, #ffd89b, #ff9d8e); " +
                          "-fx-font-family: 'Comic Neue', cursive;");
 
-        // Legend on the right
+        // Legend container on the right side
         legendBox = new VBox(10);
         legendBox.setPadding(new Insets(15));
         legendBox.setStyle("-fx-border-color: gray; -fx-border-width: 1; " +
                            "-fx-background-color: rgba(255,255,255,0.9);");
         appPane.setRight(legendBox);
 
-        // Create control buttons with increased widths and emojis added
-        Button loadButton = new Button("📂 Load CSV File");
-        loadButton.setFont(Font.font("Comic Neue", 12));
-        loadButton.setPrefWidth(200);
-        loadButton.setPrefHeight(40);
-        loadButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
-                            "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
-
-        Button exportCSVButton = new Button("💾 Export CSV");
-        exportCSVButton.setFont(Font.font("Comic Neue", 12));
-        exportCSVButton.setPrefWidth(200);
-        exportCSVButton.setPrefHeight(40);
-        exportCSVButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
-                                 "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
+        // Create control buttons with animations
+        Button loadButton = createAnimatedButton("📂 Load CSV File");
+        Button exportCSVButton = createAnimatedButton("💾 Export CSV");
         exportCSVButton.setDisable(true);
-
-        Button exportPNGButton = new Button("🖼️ Export PNG");
-        exportPNGButton.setFont(Font.font("Comic Neue", 12));
-        exportPNGButton.setPrefWidth(200);
-        exportPNGButton.setPrefHeight(40);
-        exportPNGButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
-                                 "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
+        Button exportPNGButton = createAnimatedButton("🖼️ Export PNG");
         exportPNGButton.setDisable(true);
-
-        Button exportPDFButton = new Button("📄 Export PDF");
-        exportPDFButton.setFont(Font.font("Comic Neue", 12));
-        exportPDFButton.setPrefWidth(200);
-        exportPDFButton.setPrefHeight(40);
-        exportPDFButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
-                                 "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
+        Button exportPDFButton = createAnimatedButton("📄 Export PDF");
         exportPDFButton.setDisable(true);
 
-        // Declare file and summary labels early so they're accessible in all handlers
+        // Labels for file status and summary information
         final Label fileLabel = new Label("No file loaded yet.");
         fileLabel.setFont(Font.font("Comic Neue", 14));
         fileLabel.setStyle("-fx-text-fill: #4a2c2a;");
@@ -171,36 +173,36 @@ public class DepartmentScoreAnalyzer extends Application {
         summaryLabel.setFont(Font.font("Comic Neue", 14));
         summaryLabel.setStyle("-fx-text-fill: #4a2c2a;");
 
-        Button resetButton = new Button("🔄 Reset");
-        resetButton.setFont(Font.font("Comic Neue", 12));
-        resetButton.setPrefWidth(200);
-        resetButton.setPrefHeight(40);
-        resetButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; -fx-background-radius: 30;");
+        // Reset button clears data and transitions back to the home screen
+        Button resetButton = createAnimatedButton("🔄 Reset");
         resetButton.setOnAction(e -> {
-            // Reset: clear data and switch back to home screen
             students.clear();
             departmentAverages = null;
             chart = null;
             legendBox.getChildren().clear();
             appPane.setCenter(null);
-            // Disable export and toggle buttons
             exportCSVButton.setDisable(true);
             exportPNGButton.setDisable(true);
             exportPDFButton.setDisable(true);
-            // Reset file loaded label and summary
             fileLabel.setText("No file loaded yet.");
             summaryLabel.setText("Load a CSV file to see results");
-            // Show homescreen
-            appPane.setVisible(false);
-            homePane.setVisible(true);
+            FadeTransition fadeOut = new FadeTransition(Duration.millis(500), appPane);
+            fadeOut.setFromValue(1.0);
+            fadeOut.setToValue(0.0);
+            fadeOut.setOnFinished(ev -> {
+                appPane.setVisible(false);
+                homePane.setOpacity(0.0);
+                homePane.setVisible(true);
+                FadeTransition fadeIn = new FadeTransition(Duration.millis(500), homePane);
+                fadeIn.setFromValue(0.0);
+                fadeIn.setToValue(1.0);
+                fadeIn.play();
+            });
+            fadeOut.play();
         });
 
-        Button toggleOrientationButton = new Button("↕️ Toggle Orientation");
-        toggleOrientationButton.setFont(Font.font("Comic Neue", 12));
-        toggleOrientationButton.setPrefWidth(200);
-        toggleOrientationButton.setPrefHeight(40);
-        toggleOrientationButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
-                                         "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
+        // Button to toggle between vertical and horizontal chart orientations
+        Button toggleOrientationButton = createAnimatedButton("↕️ Toggle Orientation");
         toggleOrientationButton.setDisable(true);
         toggleOrientationButton.setOnAction(e -> {
             isVerticalChart = !isVerticalChart;
@@ -208,7 +210,6 @@ public class DepartmentScoreAnalyzer extends Application {
             appPane.setCenter(chart);
         });
 
-        // Layout for bottom controls (Load button at top, export buttons, file info, summary, then reset)
         VBox bottomBox = new VBox(15);
         bottomBox.setPadding(new Insets(15));
         bottomBox.setAlignment(Pos.CENTER);
@@ -218,13 +219,12 @@ public class DepartmentScoreAnalyzer extends Application {
         bottomBox.getChildren().addAll(exportButtonBox, fileLabel, summaryLabel, resetButton);
         appPane.setBottom(bottomBox);
 
-        // Place the toggle orientation button in a left VBox, center-aligned vertically
         VBox leftBox = new VBox(toggleOrientationButton);
         leftBox.setPadding(new Insets(15));
         leftBox.setAlignment(Pos.CENTER);
         appPane.setLeft(leftBox);
 
-        // --- Load CSV File event handler ---
+        // Load CSV action - opens a file chooser and processes the file
         loadButton.setOnAction(e -> {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Open CSV File");
@@ -244,12 +244,13 @@ public class DepartmentScoreAnalyzer extends Application {
                     exportPDFButton.setDisable(false);
                     toggleOrientationButton.setDisable(false);
                 } catch (IOException ex) {
+                    // Alert the user with a descriptive message if CSV loading fails
                     showAlert("Error", "Error loading CSV file: " + ex.getMessage());
                 }
             }
         });
 
-        // --- Export CSV event handler ---
+        // Export CSV action
         exportCSVButton.setOnAction(e -> {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Save CSV File");
@@ -260,64 +261,88 @@ public class DepartmentScoreAnalyzer extends Application {
             }
         });
 
-        // --- Export PNG event handler ---
-        exportPNGButton.setOnAction(e -> {
-            exportChartAsPNG(primaryStage);
-        });
-
-        // --- Export PDF event handler ---
-        exportPDFButton.setOnAction(e -> {
-            exportChartAsPDF(primaryStage);
-        });
+        // Export PNG and PDF actions
+        exportPNGButton.setOnAction(e -> exportChartAsPNG(primaryStage));
+        exportPDFButton.setOnAction(e -> exportChartAsPDF(primaryStage));
     }
 
-    // Creates and returns a BarChart based on the orientation flag.
+    // Creates an animated button with a scale effect on click
+    private Button createAnimatedButton(String text) {
+        Button btn = new Button(text);
+        btn.setFont(Font.font("Comic Neue", 12));
+        btn.setPrefWidth(200);
+        btn.setPrefHeight(40);
+        btn.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
+                     "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
+        btn.setOnAction(e -> {
+            ScaleTransition scale = new ScaleTransition(Duration.millis(150), btn);
+            scale.setFromX(1.0);
+            scale.setFromY(1.0);
+            scale.setToX(1.1);
+            scale.setToY(1.1);
+            scale.setAutoReverse(true);
+            scale.setCycleCount(2);
+            scale.play();
+        });
+        return btn;
+    }
+
+    // Creates and returns a BarChart with fade-in animations for both the chart and its bars.
     private BarChart createChart(boolean isVertical, Map<String, Double> averages) {
         BarChart chart;
         double fixedBarWidth = 80;
         double fixedBarHeight = 80;
         double categoryGap = 50;
         int count = averages.size();
-    
+
         if (isVertical) {
-            double computedWidth = count * fixedBarWidth + (count + 1) * categoryGap;
+            // For vertical charts, if only one department exists, use a natural width; otherwise, calculate normally.
+            double computedWidth = (count == 1) 
+                ? fixedBarWidth + 2 * categoryGap  // e.g. 80 + 100 = 180 pixels
+                : count * fixedBarWidth + (count + 1) * categoryGap;
+            
             CategoryAxis xAxis = new CategoryAxis();
             NumberAxis yAxis = new NumberAxis();
-            
-            // Set axis labels
             xAxis.setLabel("Department");
             yAxis.setLabel("Average Final Score");
-            
             chart = new BarChart<>(xAxis, yAxis);
             XYChart.Series<String, Number> series = new XYChart.Series<>();
             for (Map.Entry<String, Double> entry : averages.entrySet()) {
                 series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
             }
             chart.getData().add(series);
-            
+
+            FadeTransition ft = new FadeTransition(Duration.millis(800), chart);
+            ft.setFromValue(0.0);
+            ft.setToValue(1.0);
+            ft.play();
+
+            // Run styling and animations on the JavaFX thread
             Platform.runLater(() -> {
-                // Force styling on axis lines
                 chart.lookupAll(".axis-line").forEach(n -> n.setStyle("-fx-stroke: black;"));
-                // Force styling on grid lines
                 chart.lookupAll(".chart-horizontal-grid-lines").forEach(n -> n.setStyle("-fx-stroke: black;"));
                 chart.lookupAll(".chart-vertical-grid-lines").forEach(n -> n.setStyle("-fx-stroke: black;"));
-                // Style axis labels
                 chart.lookupAll(".axis-label").forEach(n -> n.setStyle("-fx-text-fill: black; -fx-font-size: 16px;"));
-                // Style tick labels
                 chart.lookupAll(".tick-label").forEach(n -> n.setStyle("-fx-text-fill: black; -fx-font-size: 16px;"));
-                
-                // Style each bar's label and fill color
+
+                // Animate each bar and add data labels with modifications for vertical charts
                 for (XYChart.Data<String, Number> data : series.getData()) {
                     String color = getDepartmentColor(data.getXValue());
                     if (data.getNode() != null) {
                         data.getNode().setStyle("-fx-bar-fill: " + color + ";");
+                        FadeTransition barFade = new FadeTransition(Duration.millis(600), data.getNode());
+                        barFade.setFromValue(0.0);
+                        barFade.setToValue(1.0);
+                        barFade.play();
                         if (data.getNode() instanceof StackPane) {
                             StackPane stackPane = (StackPane) data.getNode();
+                            // Use a smaller font for vertical labels
                             Label label = new Label(String.format("%.2f", data.getYValue()));
-                            label.setFont(Font.font("Comic Neue", FontWeight.BOLD, 16));
+                            label.setFont(Font.font("Comic Neue", FontWeight.BOLD, 12));
                             label.setTextFill(Color.BLACK);
+                            // Position the label at the bottom center of the bar
                             stackPane.getChildren().add(label);
-                            StackPane.setAlignment(label, Pos.CENTER);
+                            StackPane.setAlignment(label, Pos.BOTTOM_CENTER);
                         }
                     }
                 }
@@ -326,42 +351,49 @@ public class DepartmentScoreAnalyzer extends Application {
             chart.setPrefWidth(computedWidth);
             chart.setMaxWidth(computedWidth);
         } else {
-            double computedHeight = count * fixedBarHeight + (count + 1) * categoryGap;
+            // For horizontal charts, if only one department exists, increase the height for better visibility.
+            double computedHeight = (count == 1)
+                ? fixedBarHeight + 4 * categoryGap  // e.g. 80 + 200 = 280 pixels
+                : count * fixedBarHeight + (count + 1) * categoryGap;
+            
             NumberAxis xAxis = new NumberAxis();
             CategoryAxis yAxis = new CategoryAxis();
-            
-            // Set axis labels
             xAxis.setLabel("Average Final Score");
             yAxis.setLabel("Department");
-            
             chart = new BarChart<>(xAxis, yAxis);
             XYChart.Series<Number, String> series = new XYChart.Series<>();
             for (Map.Entry<String, Double> entry : averages.entrySet()) {
                 series.getData().add(new XYChart.Data<>(entry.getValue(), entry.getKey()));
             }
             chart.getData().add(series);
-            
+
+            FadeTransition ft = new FadeTransition(Duration.millis(800), chart);
+            ft.setFromValue(0.0);
+            ft.setToValue(1.0);
+            ft.play();
+
             Platform.runLater(() -> {
-                // Force styling on axis lines
                 chart.lookupAll(".axis-line").forEach(n -> n.setStyle("-fx-stroke: black;"));
-                // Force styling on grid lines
                 chart.lookupAll(".chart-horizontal-grid-lines").forEach(n -> n.setStyle("-fx-stroke: black;"));
                 chart.lookupAll(".chart-vertical-grid-lines").forEach(n -> n.setStyle("-fx-stroke: black;"));
-                // Style axis labels
                 chart.lookupAll(".axis-label").forEach(n -> n.setStyle("-fx-text-fill: black; -fx-font-size: 16px;"));
-                // Style tick labels
                 chart.lookupAll(".tick-label").forEach(n -> n.setStyle("-fx-text-fill: black; -fx-font-size: 16px;"));
-                
-                // Style each bar's label and fill color
+
+                // Animate each bar and add data labels with padding to prevent clipping
                 for (XYChart.Data<Number, String> data : series.getData()) {
                     String color = getDepartmentColor(data.getYValue());
                     if (data.getNode() != null) {
                         data.getNode().setStyle("-fx-bar-fill: " + color + ";");
+                        FadeTransition barFade = new FadeTransition(Duration.millis(600), data.getNode());
+                        barFade.setFromValue(0.0);
+                        barFade.setToValue(1.0);
+                        barFade.play();
                         if (data.getNode() instanceof StackPane) {
                             StackPane stackPane = (StackPane) data.getNode();
                             Label label = new Label(String.format("%.2f", data.getXValue()));
                             label.setFont(Font.font("Comic Neue", FontWeight.BOLD, 16));
                             label.setTextFill(Color.BLACK);
+                            label.setPadding(new Insets(0, 5, 0, 5));
                             stackPane.getChildren().add(label);
                             StackPane.setAlignment(label, Pos.CENTER);
                         }
@@ -372,7 +404,8 @@ public class DepartmentScoreAnalyzer extends Application {
             chart.setPrefHeight(computedHeight);
             chart.setMaxHeight(computedHeight);
         }
-    
+
+        // Set common chart properties and style the title
         chart.setTitle("Average Final Scores by Department");
         Platform.runLater(() -> {
             chart.lookupAll(".chart-title").forEach(n -> n.setStyle("-fx-text-fill: black; -fx-font-size: 20px;"));
@@ -385,6 +418,7 @@ public class DepartmentScoreAnalyzer extends Application {
         return chart;
     }
 
+    // Load and parse the CSV file line by line
     private void loadData(String filePath) throws IOException {
         students.clear();
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath))) {
@@ -404,7 +438,7 @@ public class DepartmentScoreAnalyzer extends Application {
                         }
                     }
                     if (finalScoreIndex == -1 || departmentIndex == -1) {
-                        throw new IOException("Required columns 'Final_Score' or 'Department' not found in CSV header");
+                        throw new IOException("CSV header missing 'Final_Score' or 'Department' columns.");
                     }
                     isHeader = false;
                     continue;
@@ -415,14 +449,16 @@ public class DepartmentScoreAnalyzer extends Application {
                         students.add(student);
                     }
                 } catch (Exception e) {
+                    // Log parsing error; consider alerting if many errors occur
                     System.err.println("Error parsing line: " + line);
                     System.err.println("Error message: " + e.getMessage());
                 }
             }
         }
-        System.out.println("Loaded " + students.size() + " students");
+        System.out.println("Loaded " + students.size() + " students.");
     }
 
+    // Parse a CSV line into a Student object. Uses regex to handle commas in quotes.
     private Student parseStudent(String line, int departmentIndex, int finalScoreIndex) {
         String[] parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1);
         if (parts.length <= Math.max(departmentIndex, finalScoreIndex)) {
@@ -447,6 +483,7 @@ public class DepartmentScoreAnalyzer extends Application {
         }
     }
 
+    // Calculate department averages by grouping student scores
     private Map<String, Double> calculateDepartmentAverages() {
         Map<String, List<Double>> departmentScores = new HashMap<>();
         for (Student student : students) {
@@ -466,6 +503,7 @@ public class DepartmentScoreAnalyzer extends Application {
         return departmentAverages;
     }
 
+    // Update the legend panel with colored boxes for each department
     private void updateLegend(Map<String, Double> departmentAverages) {
         legendBox.getChildren().clear();
         Label legendTitle = new Label("Legend");
@@ -481,10 +519,15 @@ public class DepartmentScoreAnalyzer extends Application {
             deptLabel.setFont(Font.font("Comic Neue", 12));
             deptLabel.setStyle("-fx-text-fill: black;");
             legendItem.getChildren().addAll(colorBox, deptLabel);
+            FadeTransition ft = new FadeTransition(Duration.millis(500), legendItem);
+            ft.setFromValue(0.0);
+            ft.setToValue(1.0);
+            ft.play();
             legendBox.getChildren().add(legendItem);
         }
     }
 
+    // Returns the color code for a given department
     private String getDepartmentColor(String department) {
         switch (department.trim()) {
             case "CS":
@@ -500,14 +543,20 @@ public class DepartmentScoreAnalyzer extends Application {
         }
     }
 
+    // Updates the summary label with department averages and animates the fade-in
     private void updateSummary(Label summaryLabel, Map<String, Double> departmentAverages) {
         StringBuilder summary = new StringBuilder("Summary of Average Final Scores by Department:\n\n");
         for (Map.Entry<String, Double> entry : departmentAverages.entrySet()) {
             summary.append(String.format("%s: %.2f\n", entry.getKey(), entry.getValue()));
         }
         summaryLabel.setText(summary.toString());
+        FadeTransition ft = new FadeTransition(Duration.millis(500), summaryLabel);
+        ft.setFromValue(0.0);
+        ft.setToValue(1.0);
+        ft.play();
     }
 
+    // Exports the department averages as a CSV file.
     private void exportData(File file, Map<String, Double> departmentAverages) {
         try (FileWriter writer = new FileWriter(file)) {
             writer.write("Department,Average Final Score\n");
@@ -520,7 +569,7 @@ public class DepartmentScoreAnalyzer extends Application {
         }
     }
 
-    // Export chart as PNG image
+    // Exports the chart as a PNG image.
     private void exportChartAsPNG(Stage primaryStage) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save Chart as PNG");
@@ -538,7 +587,7 @@ public class DepartmentScoreAnalyzer extends Application {
         }
     }
 
-    // Export chart as PDF document
+    // Exports the chart as a PDF document.
     private void exportChartAsPDF(Stage primaryStage) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Save Chart as PDF");
@@ -562,6 +611,7 @@ public class DepartmentScoreAnalyzer extends Application {
         }
     }
 
+    // Displays an alert dialog with a title and message.
     private void showAlert(String title, String message) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -570,19 +620,29 @@ public class DepartmentScoreAnalyzer extends Application {
         alert.showAndWait();
     }
 
-    // Inner class to represent a student
+    // Inner class representing a student record.
     private static class Student {
         private String studentId;
         private String department;
         private double finalScore;
+
         public Student(String studentId, String department, double finalScore) {
             this.studentId = studentId;
             this.department = department;
             this.finalScore = finalScore;
         }
-        public String getStudentId() { return studentId; }
-        public String getDepartment() { return department; }
-        public double getFinalScore() { return finalScore; }
+
+        public String getStudentId() {
+            return studentId;
+        }
+
+        public String getDepartment() {
+            return department;
+        }
+
+        public double getFinalScore() {
+            return finalScore;
+        }
     }
 
     public static void main(String[] args) {

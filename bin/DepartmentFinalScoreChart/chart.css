@@ -1,0 +1,24 @@
+.chart {
+    -fx-font-size: 16px;
+    -fx-text-fill: black;
+}
+
+.chart .axis .axis-label {
+    -fx-text-fill: black;
+    -fx-font-size: 16px;
+}
+
+.chart .axis .tick-label {
+    -fx-text-fill: black;
+    -fx-font-size: 16px;
+}
+
+.chart .chart-title {
+    -fx-text-fill: black;
+    -fx-font-size: 20px;
+}
+
+.chart .chart-horizontal-grid-lines,
+.chart .chart-vertical-grid-lines {
+    -fx-stroke: black;
+}

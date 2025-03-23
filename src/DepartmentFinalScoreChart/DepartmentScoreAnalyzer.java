@@ -1,7 +1,9 @@
 package DepartmentFinalScoreChart;
 
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.CategoryAxis;
@@ -12,7 +14,12 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.layout.Region;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
@@ -31,7 +38,8 @@ public class DepartmentScoreAnalyzer extends Application {
     private List<Student> students = new ArrayList<>();
     private BarChart<String, Number> barChart;
     private Map<String, Double> departmentAverages;
-    
+    private VBox legendBox; // Custom legend container
+
     // Define department colors
     private static final String CS_COLOR = "#00008B"; // Dark Blue
     private static final String MATHEMATICS_COLOR = "#FF0000"; // Red
@@ -45,23 +53,45 @@ public class DepartmentScoreAnalyzer extends Application {
         // Create UI components
         BorderPane root = new BorderPane();
         
-        // Create chart area
+        // Create chart area with fixed width bars
         CategoryAxis xAxis = new CategoryAxis();
         NumberAxis yAxis = new NumberAxis();
         xAxis.setLabel("Department");
         yAxis.setLabel("Average Final Score");
         
+        // Set font for better readability
+        xAxis.setTickLabelFont(Font.font("Arial", 12));
+        yAxis.setTickLabelFont(Font.font("Arial", 12));
+        
         barChart = new BarChart<>(xAxis, yAxis);
         barChart.setTitle("Average Final Scores by Department");
         barChart.setAnimated(false);
-        barChart.setLegendVisible(false); // Hide the legend since we're using the x-axis labels
+        barChart.setLegendVisible(false); // We'll use a custom legend
         
-        // Create buttons
+        // Initial fixed width (can be adjusted later)
+        barChart.setPrefWidth(800);
+        barChart.setCategoryGap(100);
+        barChart.setBarGap(0);
+        
+        // Create buttons with better styling
         Button loadButton = new Button("Load CSV File");
+        loadButton.setFont(Font.font("Arial", 12));
+        loadButton.setPrefWidth(120);
+        loadButton.setPrefHeight(30);
+        
         Button exportButton = new Button("Export Results");
+        exportButton.setFont(Font.font("Arial", 12));
+        exportButton.setPrefWidth(120);
+        exportButton.setPrefHeight(30);
         exportButton.setDisable(true);
         
         Label summaryLabel = new Label("Load a CSV file to see results");
+        summaryLabel.setFont(Font.font("Arial", 14));
+        
+        // Create a custom legend container on the right
+        legendBox = new VBox(10);
+        legendBox.setPadding(new Insets(15));
+        legendBox.setStyle("-fx-border-color: gray; -fx-border-width: 1;");
         
         // Set up button actions
         loadButton.setOnAction(e -> {
@@ -77,6 +107,7 @@ public class DepartmentScoreAnalyzer extends Application {
                     departmentAverages = calculateDepartmentAverages();
                     updateChart(departmentAverages);
                     updateSummary(summaryLabel, departmentAverages);
+                    updateLegend(departmentAverages);
                     exportButton.setDisable(false);
                 } catch (Exception ex) {
                     showAlert("Error", "Failed to load or process data: " + ex.getMessage());
@@ -100,17 +131,21 @@ public class DepartmentScoreAnalyzer extends Application {
             }
         });
         
-        // Layout
-        HBox buttonBox = new HBox(10, loadButton, exportButton);
-        buttonBox.setPadding(new Insets(10));
+        // Layout with better spacing
+        HBox buttonBox = new HBox(20, loadButton, exportButton);
+        buttonBox.setPadding(new Insets(15));
         
-        VBox bottomBox = new VBox(10, buttonBox, summaryLabel);
-        bottomBox.setPadding(new Insets(10));
+        VBox bottomBox = new VBox(15, buttonBox, summaryLabel);
+        bottomBox.setPadding(new Insets(15));
         
         root.setCenter(barChart);
         root.setBottom(bottomBox);
+        root.setRight(legendBox); // Add custom legend to the right
         
-        Scene scene = new Scene(root, 800, 600);
+        // Add some padding around the chart
+        BorderPane.setMargin(barChart, new Insets(20));
+        
+        Scene scene = new Scene(root, 900, 700);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -153,7 +188,6 @@ public class DepartmentScoreAnalyzer extends Application {
                 } catch (Exception e) {
                     System.err.println("Error parsing line: " + line);
                     System.err.println("Error message: " + e.getMessage());
-                    // Continue processing other lines
                 }
             }
         }
@@ -181,7 +215,6 @@ public class DepartmentScoreAnalyzer extends Application {
                     finalScore = Double.parseDouble(parts[finalScoreIndex].trim());
                 } catch (NumberFormatException e) {
                     System.err.println("Invalid final score: " + parts[finalScoreIndex]);
-                    // Use 0 as default
                 }
             }
             
@@ -218,11 +251,22 @@ public class DepartmentScoreAnalyzer extends Application {
     
     private void updateChart(Map<String, Double> departmentAverages) {
         barChart.getData().clear();
+
+        // Calculate computed width based on number of departments to keep a fixed bar width
+        double fixedBarWidth = 80;
+        double categoryGap = 50;
+        int count = departmentAverages.size();
+        double computedWidth = count * fixedBarWidth + (count + 1) * categoryGap;
+        
+        // Force the chart to have the computed width
+        barChart.setMinWidth(computedWidth);
+        barChart.setPrefWidth(computedWidth);
+        barChart.setMaxWidth(computedWidth);
         
         // Create a single series for all departments
         XYChart.Series<String, Number> series = new XYChart.Series<>();
         series.setName("Average Final Score");
-        
+
         // Add data for each department
         for (Map.Entry<String, Double> entry : departmentAverages.entrySet()) {
             series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
@@ -230,22 +274,50 @@ public class DepartmentScoreAnalyzer extends Application {
         
         barChart.getData().add(series);
         
-        // Apply colors after the chart has been updated
-        applyCssToChart();
-    }
-    
-    private void applyCssToChart() {
-        // Apply custom colors to each bar based on department name
-        for (XYChart.Series<String, Number> series : barChart.getData()) {
+        // Set the category gap for consistency
+        barChart.setCategoryGap(categoryGap);
+        
+        // After nodes are created, update each bar's color and add the value label inside the bar.
+        Platform.runLater(() -> {
             for (XYChart.Data<String, Number> data : series.getData()) {
                 String department = data.getXValue();
                 String color = getDepartmentColor(department);
-                
-                // Apply color to the bar
                 if (data.getNode() != null) {
+                    // Update bar color
                     data.getNode().setStyle("-fx-bar-fill: " + color + ";");
+                    
+                    // Assume the bar node is a StackPane, add a label centered within it
+                    if (data.getNode() instanceof StackPane) {
+                        StackPane stackPane = (StackPane) data.getNode();
+                        Label label = new Label(String.format("%.2f", data.getYValue()));
+                        label.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+                        label.setTextFill(Color.WHITE);
+                        stackPane.getChildren().add(label);
+                        StackPane.setAlignment(label, Pos.CENTER);
+                    }
                 }
             }
+        });
+    }
+    
+    private void updateLegend(Map<String, Double> departmentAverages) {
+        legendBox.getChildren().clear();
+        Label legendTitle = new Label("Legend");
+        legendTitle.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        legendBox.getChildren().add(legendTitle);
+        
+        // Loop through departments to create legend items
+        for (String department : departmentAverages.keySet()) {
+            HBox legendItem = new HBox(10);
+            Region colorBox = new Region();
+            colorBox.setPrefSize(15, 15);
+            colorBox.setStyle("-fx-background-color: " + getDepartmentColor(department) + "; -fx-border-color: black;");
+            
+            Label deptLabel = new Label(department);
+            deptLabel.setFont(Font.font("Arial", 12));
+            
+            legendItem.getChildren().addAll(colorBox, deptLabel);
+            legendBox.getChildren().add(legendItem);
         }
     }
     
@@ -265,12 +337,11 @@ public class DepartmentScoreAnalyzer extends Application {
     }
     
     private void updateSummary(Label summaryLabel, Map<String, Double> departmentAverages) {
-        StringBuilder summary = new StringBuilder("Summary of Average Final Scores by Department:\n");
+        StringBuilder summary = new StringBuilder("Summary of Average Final Scores by Department:\n\n");
         
-        // Create a formatted summary with department colors
+        // Create a formatted summary
         for (Map.Entry<String, Double> entry : departmentAverages.entrySet()) {
             String department = entry.getKey();
-            String colorHex = getDepartmentColor(department);
             summary.append(String.format("%s: %.2f\n", department, entry.getValue()));
         }
         
@@ -323,15 +394,6 @@ public class DepartmentScoreAnalyzer extends Application {
         
         public double getFinalScore() {
             return finalScore;
-        }
-        
-        @Override
-        public String toString() {
-            return "Student{" +
-                    "studentId='" + studentId + '\'' +
-                    ", department='" + department + '\'' +
-                    ", finalScore=" + finalScore +
-                    '}';
         }
     }
 

@@ -55,7 +55,7 @@ public class DepartmentScoreAnalyzer extends Application {
     private boolean isVerticalChart = true; // Toggle flag
 
     // Define department colors
-    private static final String CS_COLOR = "#00008B"; // Dark Blue
+    private static final String CS_COLOR = "#ADD8E6"; // Dark Blue
     private static final String MATHEMATICS_COLOR = "#FF0000"; // Red
     private static final String ENGINEERING_COLOR = "#008000"; // Green
     private static final String BUSINESS_COLOR = "#FFD700"; // Yellow/Gold
@@ -108,8 +108,7 @@ public class DepartmentScoreAnalyzer extends Application {
         startButton.setFont(Font.font("Comic Neue", 14));
         startButton.setPrefWidth(200);
         startButton.setPrefHeight(40);
-        startButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
-                             "-fx-background-radius: 30;");
+        startButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; -fx-background-radius: 30;");
         startButton.setOnAction(e -> {
             // Switch to appPane (main UI)
             homePane.setVisible(false);
@@ -164,12 +163,19 @@ public class DepartmentScoreAnalyzer extends Application {
                                  "-fx-padding: 15 30 15 30; -fx-font-size: 1.2em; -fx-background-radius: 30;");
         exportPDFButton.setDisable(true);
 
+        // Declare file and summary labels early so they're accessible in all handlers
+        final Label fileLabel = new Label("No file loaded yet.");
+        fileLabel.setFont(Font.font("Comic Neue", 14));
+        fileLabel.setStyle("-fx-text-fill: #4a2c2a;");
+        final Label summaryLabel = new Label("Load a CSV file to see results");
+        summaryLabel.setFont(Font.font("Comic Neue", 14));
+        summaryLabel.setStyle("-fx-text-fill: #4a2c2a;");
+
         Button resetButton = new Button("🔄 Reset");
         resetButton.setFont(Font.font("Comic Neue", 12));
         resetButton.setPrefWidth(200);
         resetButton.setPrefHeight(40);
-        resetButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; " +
-                             "-fx-background-radius: 30;");
+        resetButton.setStyle("-fx-background-color: #4a2c2a; -fx-text-fill: white; -fx-background-radius: 30;");
         resetButton.setOnAction(e -> {
             // Reset: clear data and switch back to home screen
             students.clear();
@@ -181,6 +187,9 @@ public class DepartmentScoreAnalyzer extends Application {
             exportCSVButton.setDisable(true);
             exportPNGButton.setDisable(true);
             exportPDFButton.setDisable(true);
+            // Reset file loaded label and summary
+            fileLabel.setText("No file loaded yet.");
+            summaryLabel.setText("Load a CSV file to see results");
             // Show homescreen
             appPane.setVisible(false);
             homePane.setVisible(true);
@@ -199,18 +208,14 @@ public class DepartmentScoreAnalyzer extends Application {
             appPane.setCenter(chart);
         });
 
-        final Label summaryLabel = new Label("Load a CSV file to see results");
-        summaryLabel.setFont(Font.font("Comic Neue", 14));
-        summaryLabel.setStyle("-fx-text-fill: #4a2c2a;");
-
-        // Layout for bottom controls (Load button at top, export buttons and summary below, then reset)
+        // Layout for bottom controls (Load button at top, export buttons, file info, summary, then reset)
         VBox bottomBox = new VBox(15);
         bottomBox.setPadding(new Insets(15));
         bottomBox.setAlignment(Pos.CENTER);
         bottomBox.getChildren().add(loadButton);
         HBox exportButtonBox = new HBox(20, exportCSVButton, exportPNGButton, exportPDFButton);
         exportButtonBox.setAlignment(Pos.CENTER);
-        bottomBox.getChildren().addAll(exportButtonBox, summaryLabel, resetButton);
+        bottomBox.getChildren().addAll(exportButtonBox, fileLabel, summaryLabel, resetButton);
         appPane.setBottom(bottomBox);
 
         // Place the toggle orientation button in a left VBox, center-aligned vertically
@@ -219,7 +224,7 @@ public class DepartmentScoreAnalyzer extends Application {
         leftBox.setAlignment(Pos.CENTER);
         appPane.setLeft(leftBox);
 
-        // --- New: Load CSV File event handler ---
+        // --- Load CSV File event handler ---
         loadButton.setOnAction(e -> {
             FileChooser fileChooser = new FileChooser();
             fileChooser.setTitle("Open CSV File");
@@ -233,6 +238,7 @@ public class DepartmentScoreAnalyzer extends Application {
                     appPane.setCenter(chart);
                     updateLegend(departmentAverages);
                     updateSummary(summaryLabel, departmentAverages);
+                    fileLabel.setText("Loaded file: " + file.getName());
                     exportCSVButton.setDisable(false);
                     exportPNGButton.setDisable(false);
                     exportPDFButton.setDisable(false);
@@ -272,31 +278,46 @@ public class DepartmentScoreAnalyzer extends Application {
         double fixedBarHeight = 80;
         double categoryGap = 50;
         int count = averages.size();
-
+    
         if (isVertical) {
             double computedWidth = count * fixedBarWidth + (count + 1) * categoryGap;
             CategoryAxis xAxis = new CategoryAxis();
             NumberAxis yAxis = new NumberAxis();
+            
+            // Set axis labels
             xAxis.setLabel("Department");
             yAxis.setLabel("Average Final Score");
+            
             chart = new BarChart<>(xAxis, yAxis);
             XYChart.Series<String, Number> series = new XYChart.Series<>();
             for (Map.Entry<String, Double> entry : averages.entrySet()) {
                 series.getData().add(new XYChart.Data<>(entry.getKey(), entry.getValue()));
             }
             chart.getData().add(series);
+            
             Platform.runLater(() -> {
+                // Force styling on axis lines
+                chart.lookupAll(".axis-line").forEach(n -> n.setStyle("-fx-stroke: black;"));
+                // Force styling on grid lines
+                chart.lookupAll(".chart-horizontal-grid-lines").forEach(n -> n.setStyle("-fx-stroke: black;"));
+                chart.lookupAll(".chart-vertical-grid-lines").forEach(n -> n.setStyle("-fx-stroke: black;"));
+                // Style axis labels
+                chart.lookupAll(".axis-label").forEach(n -> n.setStyle("-fx-text-fill: black; -fx-font-size: 16px;"));
+                // Style tick labels
+                chart.lookupAll(".tick-label").forEach(n -> n.setStyle("-fx-text-fill: black; -fx-font-size: 16px;"));
+                
+                // Style each bar's label and fill color
                 for (XYChart.Data<String, Number> data : series.getData()) {
                     String color = getDepartmentColor(data.getXValue());
                     if (data.getNode() != null) {
                         data.getNode().setStyle("-fx-bar-fill: " + color + ";");
-                        if (data.getNode() instanceof javafx.scene.layout.StackPane) {
-                            javafx.scene.layout.StackPane stackPane = (javafx.scene.layout.StackPane) data.getNode();
+                        if (data.getNode() instanceof StackPane) {
+                            StackPane stackPane = (StackPane) data.getNode();
                             Label label = new Label(String.format("%.2f", data.getYValue()));
-                            label.setFont(Font.font("Comic Neue", FontWeight.BOLD, 12));
-                            label.setTextFill(Color.WHITE);
+                            label.setFont(Font.font("Comic Neue", FontWeight.BOLD, 16));
+                            label.setTextFill(Color.BLACK);
                             stackPane.getChildren().add(label);
-                            javafx.scene.layout.StackPane.setAlignment(label, Pos.CENTER);
+                            StackPane.setAlignment(label, Pos.CENTER);
                         }
                     }
                 }
@@ -308,26 +329,41 @@ public class DepartmentScoreAnalyzer extends Application {
             double computedHeight = count * fixedBarHeight + (count + 1) * categoryGap;
             NumberAxis xAxis = new NumberAxis();
             CategoryAxis yAxis = new CategoryAxis();
+            
+            // Set axis labels
             xAxis.setLabel("Average Final Score");
             yAxis.setLabel("Department");
+            
             chart = new BarChart<>(xAxis, yAxis);
             XYChart.Series<Number, String> series = new XYChart.Series<>();
             for (Map.Entry<String, Double> entry : averages.entrySet()) {
                 series.getData().add(new XYChart.Data<>(entry.getValue(), entry.getKey()));
             }
             chart.getData().add(series);
+            
             Platform.runLater(() -> {
+                // Force styling on axis lines
+                chart.lookupAll(".axis-line").forEach(n -> n.setStyle("-fx-stroke: black;"));
+                // Force styling on grid lines
+                chart.lookupAll(".chart-horizontal-grid-lines").forEach(n -> n.setStyle("-fx-stroke: black;"));
+                chart.lookupAll(".chart-vertical-grid-lines").forEach(n -> n.setStyle("-fx-stroke: black;"));
+                // Style axis labels
+                chart.lookupAll(".axis-label").forEach(n -> n.setStyle("-fx-text-fill: black; -fx-font-size: 16px;"));
+                // Style tick labels
+                chart.lookupAll(".tick-label").forEach(n -> n.setStyle("-fx-text-fill: black; -fx-font-size: 16px;"));
+                
+                // Style each bar's label and fill color
                 for (XYChart.Data<Number, String> data : series.getData()) {
                     String color = getDepartmentColor(data.getYValue());
                     if (data.getNode() != null) {
                         data.getNode().setStyle("-fx-bar-fill: " + color + ";");
-                        if (data.getNode() instanceof javafx.scene.layout.StackPane) {
-                            javafx.scene.layout.StackPane stackPane = (javafx.scene.layout.StackPane) data.getNode();
+                        if (data.getNode() instanceof StackPane) {
+                            StackPane stackPane = (StackPane) data.getNode();
                             Label label = new Label(String.format("%.2f", data.getXValue()));
-                            label.setFont(Font.font("Comic Neue", FontWeight.BOLD, 12));
-                            label.setTextFill(Color.WHITE);
+                            label.setFont(Font.font("Comic Neue", FontWeight.BOLD, 16));
+                            label.setTextFill(Color.BLACK);
                             stackPane.getChildren().add(label);
-                            javafx.scene.layout.StackPane.setAlignment(label, Pos.CENTER);
+                            StackPane.setAlignment(label, Pos.CENTER);
                         }
                     }
                 }
@@ -336,10 +372,13 @@ public class DepartmentScoreAnalyzer extends Application {
             chart.setPrefHeight(computedHeight);
             chart.setMaxHeight(computedHeight);
         }
-
+    
         chart.setTitle("Average Final Scores by Department");
+        Platform.runLater(() -> {
+            chart.lookupAll(".chart-title").forEach(n -> n.setStyle("-fx-text-fill: black; -fx-font-size: 20px;"));
+        });
         chart.setAnimated(false);
-        chart.setLegendVisible(false); // Custom legend is used
+        chart.setLegendVisible(false);
         chart.setCategoryGap(categoryGap);
         chart.setBarGap(0);
         BorderPane.setMargin(chart, new Insets(20));
@@ -431,6 +470,7 @@ public class DepartmentScoreAnalyzer extends Application {
         legendBox.getChildren().clear();
         Label legendTitle = new Label("Legend");
         legendTitle.setFont(Font.font("Comic Neue", FontWeight.BOLD, 14));
+        legendTitle.setStyle("-fx-text-fill: black;");
         legendBox.getChildren().add(legendTitle);
         for (String department : departmentAverages.keySet()) {
             HBox legendItem = new HBox(10);
@@ -439,6 +479,7 @@ public class DepartmentScoreAnalyzer extends Application {
             colorBox.setStyle("-fx-background-color: " + getDepartmentColor(department) + "; -fx-border-color: black;");
             Label deptLabel = new Label(department);
             deptLabel.setFont(Font.font("Comic Neue", 12));
+            deptLabel.setStyle("-fx-text-fill: black;");
             legendItem.getChildren().addAll(colorBox, deptLabel);
             legendBox.getChildren().add(legendItem);
         }

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Average Final Score Reaper</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js DataLabels plugin CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- jsPDF CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- html2canvas CDN (used for PDF export) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            font-family: 'Comic Neue', cursive;
+            background: linear-gradient(45deg, #ffd89b, #ff9d8e);
+            color: #4a2c2a;
+        }
+        .container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+        /* Home Screen */
+        #homeScreen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            padding: 15px;
+            transition: opacity 0.5s;
+        }
+        #homeScreen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #homeScreen h1 {
+            font-size: 40px;
+            margin-bottom: 7.5px;
+        }
+        #homeScreen h2 {
+            font-size: 20px;
+            margin-bottom: 7.5px;
+        }
+        #homeScreen p {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+        .btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 30px;
+            background-color: #4a2c2a;
+            color: white;
+            cursor: pointer;
+            transition: transform 0.15s;
+            margin: 4px;
+            width: 200px;
+            height: 40px;
+        }
+        .btn:active {
+            transform: scale(1.1);
+        }
+        /* Main App Screen */
+        #appScreen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 15px;
+            transition: opacity 0.5s;
+        }
+        #appScreen.visible {
+            display: flex;
+            opacity: 1;
+        }
+        #chartAndLegend {
+            display: flex;
+            flex: 1;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            visibility: hidden;
+        }
+        /* Chart container */
+        #chartContainer {
+            flex: 1;
+            max-width: 800px;
+            max-height: 500px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 15px auto;
+            background: #fff; /* White background helps for PNG export */
+            border: solid 10px #ccc;
+            border-radius: 20%;
+        }
+        #chartContainer canvas {
+            width: 100% !important;
+            height: auto !important;
+            display: block;
+            margin: auto;
+        }
+        #legend {
+            background-color: rgba(255,255,255,0.9);
+            padding: 15px;
+            border: 1px solid gray;
+            max-width: 200px;
+            margin: auto;
+        }
+        #legend h3 {
+            margin: 0 0 7.5px 0;
+            font-size: 14px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border: 1px solid black;
+            margin-right: 7.5px;
+        }
+        /* Bottom controls */
+        #controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 7.5px;
+        }
+        #controls > div {
+            margin: 3px 0;
+        }
+        /* Left control */
+        #leftControl {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            visibility: hidden;
+        }
+        /* Fade animation */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .hidden-until-loaded {
+            visibility: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Home Screen -->
+        <div id="homeScreen">
+            <h1>Average Final Score Reaper</h1>
+            <h2>Author: Hoby Ace Jerico Josol</h2>
+            <p>Gathers average final score of students per department.</p>
+            <button id="startBtn" class="btn">🚀 Start</button>
+        </div>
+
+        <!-- Main App Screen -->
+        <div id="appScreen">
+            <!-- Left control for orientation toggle -->
+            <div id="leftControl">
+                <button id="toggleOrientationBtn" class="btn" disabled>↕️ Toggle Orientation</button>
+            </div>
+
+            <!-- Chart and Legend -->
+            <div id="chartAndLegend">
+                <div id="chartContainer">
+                    <canvas id="chartCanvas"></canvas>
+                </div>
+                <div id="legend"></div>
+            </div>
+
+            <!-- Bottom controls -->
+            <div id="controls">
+                <div>
+                    <button id="loadCsvBtn" class="btn">📂 Load CSV File</button>
+                    <input type="file" id="csvFileInput" accept=".csv" style="display:none">
+                </div>
+                <div class="hidden-until-loaded">
+                    <button id="exportCsvBtn" class="btn" disabled>💾 Export CSV</button>
+                    <button id="exportPngBtn" class="btn" disabled>🖼️ Export PNG</button>
+                    <button id="exportPdfBtn" class="btn" disabled>📄 Export PDF</button>
+                </div>
+                <div>
+                    <span id="fileStatus">No file loaded yet.</span>
+                </div>
+                <div>
+                    <span id="summaryLabel" class="hidden-until-loaded">Load a CSV file to see results</span>
+                </div>
+                <div>
+                    <button id="resetBtn" class="btn">🔄 Reset</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Department color mapping
+        const departmentColors = {
+            "CS": "#ADD8E6",
+            "Mathematics": "#FF0000",
+            "Engineering": "#008000",
+            "Business": "#FFD700"
+        };
+
+        let students = [];
+        let departmentAverages = {};
+        let isVerticalChart = true;
+        let chart; // Chart.js instance
+
+        // Get DOM elements
+        const homeScreen = document.getElementById('homeScreen');
+        const appScreen = document.getElementById('appScreen');
+        const startBtn = document.getElementById('startBtn');
+        const loadCsvBtn = document.getElementById('loadCsvBtn');
+        const csvFileInput = document.getElementById('csvFileInput');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        const exportPngBtn = document.getElementById('exportPngBtn');
+        const exportPdfBtn = document.getElementById('exportPdfBtn');
+        const toggleOrientationBtn = document.getElementById('toggleOrientationBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const fileStatus = document.getElementById('fileStatus');
+        const summaryLabel = document.getElementById('summaryLabel');
+        const legendDiv = document.getElementById('legend');
+        const chartCanvas = document.getElementById('chartCanvas');
+        const chartAndLegend = document.getElementById('chartAndLegend');
+        const leftControl = document.getElementById('leftControl');
+        const hiddenUntilLoaded = document.querySelectorAll('.hidden-until-loaded');
+
+        // Transition from home screen to app screen
+        startBtn.addEventListener('click', () => {
+            startBtn.style.transform = "scale(1.1)";
+            setTimeout(() => {
+                homeScreen.classList.add('hidden');
+                setTimeout(() => {
+                    homeScreen.style.display = 'none';
+                    appScreen.classList.add('visible');
+                }, 500);
+            }, 150);
+        });
+
+        // Load CSV file
+        loadCsvBtn.addEventListener('click', () => {
+            csvFileInput.click();
+        });
+
+        csvFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        loadData(e.target.result);
+                        departmentAverages = calculateDepartmentAverages();
+                        updateChart();
+                        updateLegend();
+                        updateSummary();
+                        fileStatus.textContent = "Loaded file: " + file.name;
+                        exportCsvBtn.disabled = false;
+                        exportPngBtn.disabled = false;
+                        exportPdfBtn.disabled = false;
+                        toggleOrientationBtn.disabled = false;
+                        
+                        // Show hidden elements after file is loaded
+                        chartAndLegend.style.visibility = 'visible';
+                        leftControl.style.visibility = 'visible';
+                        hiddenUntilLoaded.forEach(el => {
+                            el.style.visibility = 'visible';
+                        });
+                    } catch (error) {
+                        alert("Error loading CSV file: " + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // Toggle chart orientation
+        toggleOrientationBtn.addEventListener('click', () => {
+            isVerticalChart = !isVerticalChart;
+            updateChart();
+        });
+
+        // Reset button
+        resetBtn.addEventListener('click', () => {
+            students = [];
+            departmentAverages = {};
+            if(chart) chart.destroy();
+            legendDiv.innerHTML = "";
+            fileStatus.textContent = "No file loaded yet.";
+            summaryLabel.textContent = "Load a CSV file to see results";
+            exportCsvBtn.disabled = true;
+            exportPngBtn.disabled = true;
+            exportPdfBtn.disabled = true;
+            toggleOrientationBtn.disabled = true;
+            
+            // Hide elements again
+            chartAndLegend.style.visibility = 'hidden';
+            leftControl.style.visibility = 'hidden';
+            hiddenUntilLoaded.forEach(el => {
+                el.style.visibility = 'hidden';
+            });
+            
+            appScreen.classList.remove('visible');
+            homeScreen.style.display = 'flex';
+            setTimeout(() => {
+                homeScreen.classList.remove('hidden');
+            }, 100);
+        });
+
+        // Export CSV
+        exportCsvBtn.addEventListener('click', () => {
+            let csvContent = "Department,Average Final Score\n";
+            for (const dept in departmentAverages) {
+                csvContent += `${dept},${departmentAverages[dept].toFixed(2)}\n`;
+            }
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "department_averages.csv";
+            link.click();
+        });
+
+        // Export PNG with a solid white background
+        exportPngBtn.addEventListener('click', () => {
+            // Get the chart image
+            const imageURL = chart.toBase64Image();
+            const img = new Image();
+            img.onload = function() {
+                // Create a temporary canvas matching the chart container's dimensions
+                const canvasWidth = chart.canvas.offsetWidth;
+                const canvasHeight = chart.canvas.offsetHeight;
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = canvasWidth;
+                tempCanvas.height = canvasHeight;
+                const ctx = tempCanvas.getContext('2d');
+                
+                // Fill with white
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+                
+                // Draw the chart image stretched to the displayed dimensions
+                ctx.drawImage(img, 0, 0, canvasWidth, canvasHeight);
+                
+                // Export the result as PNG
+                const newImageURL = tempCanvas.toDataURL("image/png");
+                const link = document.createElement("a");
+                link.href = newImageURL;
+                link.download = "chart.png";
+                link.click();
+            };
+            img.src = imageURL;
+        });
+
+        // Export PDF using html2canvas to capture the chart container
+        exportPdfBtn.addEventListener('click', () => {
+            html2canvas(document.getElementById('chartContainer'), {
+                backgroundColor: "#ffffff"
+            }).then(canvas => {
+                const imgData = canvas.toDataURL("image/png");
+                const { jsPDF } = window.jspdf;
+                
+                // Use the canvas dimensions for the PDF
+                const pdf = new jsPDF({
+                    orientation: isVerticalChart ? 'landscape' : 'portrait',
+                    unit: 'px',
+                    format: [canvas.width, canvas.height]
+                });
+                
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                pdf.save("chart.pdf");
+            });
+        });
+
+        // Parse CSV content and load student data
+        function loadData(csvText) {
+            students = [];
+            const lines = csvText.split("\n").filter(line => line.trim() !== "");
+            let headerIndexes = {};
+            let isHeader = true;
+            
+            for (const line of lines) {
+                if (isHeader) {
+                    const headers = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+                    headers.forEach((header, i) => {
+                        headerIndexes[header.trim()] = i;
+                    });
+                    
+                    if (headerIndexes["Final_Score"] === undefined || headerIndexes["Department"] === undefined) {
+                        throw new Error("CSV header missing 'Final_Score' or 'Department' columns.");
+                    }
+                    
+                    isHeader = false;
+                } else {
+                    const parts = line.split(/,(?=(?:[^"]*"[^"]*")*[^"]*$)/);
+                    if (parts.length <= Math.max(headerIndexes["Final_Score"], headerIndexes["Department"])) {
+                        console.error("Invalid line format (not enough fields): " + line);
+                        continue;
+                    }
+                    
+                    const studentId = parts[0].trim();
+                    const department = parts[headerIndexes["Department"]].trim();
+                    let finalScore = parseFloat(parts[headerIndexes["Final_Score"]].trim()) || 0;
+                    
+                    students.push({
+                        studentId,
+                        department,
+                        finalScore
+                    });
+                }
+            }
+            
+            console.log("Loaded", students.length, "students.");
+        }
+
+        // Calculate department averages
+        function calculateDepartmentAverages() {
+            const deptScores = {};
+            
+            students.forEach(s => {
+                if (!deptScores[s.department]) deptScores[s.department] = [];
+                deptScores[s.department].push(s.finalScore);
+            });
+            
+            const averages = {};
+            for (const dept in deptScores) {
+                const sum = deptScores[dept].reduce((a, b) => a + b, 0);
+                averages[dept] = deptScores[dept].length ? sum / deptScores[dept].length : 0;
+            }
+            
+            return averages;
+        }
+
+        // Update the Chart.js chart with DataLabels
+        function updateChart() {
+            const labels = Object.keys(departmentAverages);
+            const dataValues = labels.map(dept => departmentAverages[dept]);
+            const backgroundColors = labels.map(dept => departmentColors[dept] || "#808080");
+            
+            const config = {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Average Final Score',
+                        data: dataValues,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 1,
+                        maxBarThickness: 50
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: isVerticalChart ? 'x' : 'y',
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: isVerticalChart ? 'Department' : 'Average Final Score'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: isVerticalChart ? 'Average Final Score' : 'Department'
+                            },
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Average Final Scores by Department',
+                            font: {
+                                size: 20,
+                                family: 'Comic Neue'
+                            }
+                        },
+                        datalabels: {
+                            anchor: 'end',
+                            align: 'end',
+                            color: '#000',
+                            font: {
+                                weight: 'bold'
+                            },
+                            formatter: (value) => value.toFixed(2),
+                            clip: false
+                        }
+                    },
+                    animation: {
+                        duration: 800
+                    }
+                },
+                plugins: [ChartDataLabels]
+            };
+            
+            if (chart) {
+                chart.destroy();
+            }
+            
+            chart = new Chart(chartCanvas, config);
+        }
+
+        // Update legend
+        function updateLegend() {
+            legendDiv.innerHTML = "<h3>Legend</h3>";
+            
+            Object.keys(departmentAverages).forEach((dept, idx) => {
+                const item = document.createElement("div");
+                item.className = "legend-item";
+                item.style.animationDelay = `${idx * 0.1}s`;
+                
+                const colorBox = document.createElement("div");
+                colorBox.className = "legend-color";
+                colorBox.style.backgroundColor = departmentColors[dept] || "#808080";
+                
+                const label = document.createElement("span");
+                label.textContent = dept;
+                
+                item.appendChild(colorBox);
+                item.appendChild(label);
+                legendDiv.appendChild(item);
+            });
+        }
+
+        // Update summary label
+        function updateSummary() {
+            let summary = "Summary of Average Final Scores by Department:\n\n";
+            
+            for (const dept in departmentAverages) {
+                summary += `${dept}: ${departmentAverages[dept].toFixed(2)}\n`;
+            }
+            
+            summaryLabel.textContent = summary;
+        }
+    </script>
+</body>
+</html>
+
